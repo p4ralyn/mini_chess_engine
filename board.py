@@ -1,5 +1,6 @@
 """4x5 Silverman minichess rules on bitboards."""
 import re
+from collections.abc import Iterable, Iterator
 from typing import NamedTuple
 
 WHITE, BLACK = 0, 1
@@ -15,10 +16,12 @@ class Move(NamedTuple):
 
 
 def square_name(sq: int) -> str:
+    """Name of a square index, like a1."""
     return "abcd"[sq % FILES] + str(sq // FILES + 1)
 
 
 def square_index(name: str) -> int:
+    """Index of a square name, like a1."""
     return (int(name[1]) - 1) * FILES + "abcd".index(name[0])
 
 
@@ -26,11 +29,12 @@ def _on_board(f: int, r: int) -> bool:
     return 0 <= f < FILES and 0 <= r < RANKS
 
 
-def _mask(squares) -> int:
+def _mask(squares: Iterable[int]) -> int:
     return sum(1 << s for s in squares)
 
 
-def _bits(mask: int):
+def bits(mask: int) -> Iterator[int]:
+    """Indexes of the set bits."""
     while mask:
         low = mask & -mask
         yield low.bit_length() - 1
@@ -56,7 +60,7 @@ ORTHO_RAYS = [[_ray(s, df, dr) for df, dr in ORTHO] for s in range(20)]
 DIAG_RAYS = [[_ray(s, df, dr) for df, dr in DIAG] for s in range(20)]
 
 
-def _slide(sq: int, rays, occ: int) -> int:
+def _slide(sq: int, rays: list[list[list[int]]], occ: int) -> int:
     """Squares reached along the rays, stopping at (and including) the first blocker."""
     out = 0
     for ray in rays[sq]:
@@ -71,6 +75,8 @@ START_ROWS = ["rqkr", "pppp", "....", "PPPP", "RQKR"]
 
 
 class Board:
+    """Position, side to move and draw counters."""
+
     def __init__(self, bitboards: list[int] | None = None, turn: int = WHITE,
                  halfmove_clock: int = 0, history: dict | None = None):
         if bitboards is None:
@@ -92,18 +98,22 @@ class Board:
 
     @classmethod
     def from_rows(cls, rows: list[str], turn: int = WHITE) -> "Board":
+        """Board from rank strings, rank 5 first."""
         return cls(cls._parse_rows(rows), turn)
 
     def key(self) -> tuple:
+        """Hashable position for repetition counting."""
         return (tuple(self.bitboards), self.turn)
 
     def piece_at(self, sq: int) -> tuple[int, int] | None:
+        """(color, piece) on sq, or None."""
         for i, bb in enumerate(self.bitboards):
             if bb >> sq & 1:
                 return divmod(i, 4)
         return None
 
     def occupied(self, color: int | None = None) -> int:
+        """Mask of one side's pieces, or both."""
         if color is None:
             return self.occupied(WHITE) | self.occupied(BLACK)
         return sum(self.bitboards[color * 4:color * 4 + 4])  # masks never overlap
@@ -117,6 +127,7 @@ class Board:
                     or _slide(sq, DIAG_RAYS, occ) & bb[by * 4 + QUEEN])
 
     def is_in_check(self, color: int) -> bool:
+        """True if color's king is attacked."""
         king = self.bitboards[color * 4 + KING]
         return bool(king) and self._attacked(king.bit_length() - 1, 1 - color)
 
@@ -125,7 +136,7 @@ class Board:
         own, enemy = self.occupied(me), self.occupied(1 - me)
         moves = []
         for piece in range(4):
-            for sq in _bits(self.bitboards[me * 4 + piece]):
+            for sq in bits(self.bitboards[me * 4 + piece]):
                 if piece == PAWN:
                     step = FILES if me == WHITE else -FILES
                     targets = PAWN_ATT[me][sq] & enemy
@@ -135,7 +146,7 @@ class Board:
                         if sq // FILES == start and not occ >> (sq + 2 * step) & 1:
                             targets |= 1 << (sq + 2 * step)
                     last = RANKS - 1 if me == WHITE else 0
-                    moves += [Move(sq, t, t // FILES == last) for t in _bits(targets)]
+                    moves += [Move(sq, t, t // FILES == last) for t in bits(targets)]
                     continue
                 if piece == KING:
                     targets = KING_ATT[sq]
@@ -143,18 +154,21 @@ class Board:
                     targets = _slide(sq, ORTHO_RAYS, occ)
                     if piece == QUEEN:
                         targets |= _slide(sq, DIAG_RAYS, occ)
-                moves += [Move(sq, t) for t in _bits(targets & ~own)]
+                moves += [Move(sq, t) for t in bits(targets & ~own)]
         return moves
 
     def legal_moves(self) -> list[Move]:
+        """All legal moves for the side to move."""
         return [m for m in self._pseudo_moves() if not self.make_move(m).is_in_check(self.turn)]
 
     def is_capture(self, move: Move) -> bool:
+        """True if the move lands on an enemy piece."""
         return bool(self.occupied(1 - self.turn) >> move.to & 1)
 
     def make_move(self, move: Move) -> "Board":
+        """New board after the move."""
         me = self.turn
-        color, piece = self.piece_at(move.frm)
+        piece = self.piece_at(move.frm)[1]  # type: ignore[index]
         capture = self.is_capture(move)
         bbs = list(self.bitboards)
         for i in range((1 - me) * 4, (1 - me) * 4 + 4):
@@ -167,15 +181,17 @@ class Board:
         return new
 
     def game_over_reason(self) -> str | None:
+        """Why the game ended, or None."""
         if not self.legal_moves():
             return "checkmate" if self.is_in_check(self.turn) else "stalemate"
         if self.halfmove_clock >= 50:
-            return "50-move rule"
+            return "50-ply rule"
         if self.history.get(self.key(), 0) >= 3:
             return "repetition"
         return None
 
     def result(self) -> str | None:
+        """1-0, 0-1, 1/2-1/2, or None while playing."""
         reason = self.game_over_reason()
         if reason is None:
             return None
@@ -195,11 +211,13 @@ class Board:
 
 
 def move_to_str(board: Board, move: Move) -> str:
+    """Move as text, like a2-a3 or b1xb5."""
     sep = "x" if board.is_capture(move) else "-"
     return square_name(move.frm) + sep + square_name(move.to) + ("=Q" if move.promo else "")
 
 
 def parse_move(board: Board, text: str) -> Move | None:
+    """Legal move matching the text, or None."""
     m = re.fullmatch(r"([a-d][1-5])[-x]?([a-d][1-5])(=q)?", text.lower().replace(" ", ""))
     if not m:
         return None

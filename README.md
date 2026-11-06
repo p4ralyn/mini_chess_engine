@@ -21,7 +21,7 @@ Minichess engine for CSD311 Artificial Intelligence. Plays 4x5 Silverman miniche
 - no castling, no en passant
 - game ends on checkmate, stalemate (draw), 50 plies with no capture or pawn move (draw), or threefold repetition (draw)
 
-Moves are written `a2-a3`, captures `b2xc3`, promotions `a4-a5=Q`. In the terminal `a2a3` works too.
+Moves are written `a2-a3`, captures `b2xc3`, promotions `a4-a5=Q`. In the terminal `a2a3` works too. Type `quit` at the prompt to leave a terminal game.
 
 ## Setup
 

@@ -1,7 +1,7 @@
 """Random, greedy and minimax players."""
 import random
 
-from board import BLACK, KING, PAWN, QUEEN, ROOK, WHITE, Board, Move, RANKS, _bits
+from board import BLACK, FILES, KING, PAWN, QUEEN, RANKS, ROOK, WHITE, Board, Move, bits
 
 PIECE_VALUES = {PAWN: 1, ROOK: 5, QUEEN: 9, KING: 0}
 MATE = 10000
@@ -16,24 +16,30 @@ def evaluate(board: Board) -> float:
         for piece, value in PIECE_VALUES.items():
             bb = board.bitboards[color * 4 + piece]
             score += sign * value * bb.bit_count()
-        for sq in _bits(board.bitboards[color * 4 + PAWN]):
-            rank = sq // 4
+        for sq in bits(board.bitboards[color * 4 + PAWN]):
+            rank = sq // FILES
             score += sign * 0.1 * (rank - 1 if color == WHITE else RANKS - 2 - rank)
     return score
 
 
 class RandomBot:
+    """Plays a random legal move."""
+
     name = "random"
 
     def get_move(self, board: Board) -> Move | None:
+        """Pick a move, or None if there is none."""
         moves = board.legal_moves()
         return random.choice(moves) if moves else None
 
 
 class GreedyBot:
+    """Plays the move with the best material after it."""
+
     name = "greedy"
 
     def get_move(self, board: Board) -> Move | None:
+        """Pick a move, or None if there is none."""
         moves = board.legal_moves()
         if not moves:
             return None
@@ -44,6 +50,8 @@ class GreedyBot:
 
 
 class MinimaxBot:
+    """Negamax search with alpha-beta to a fixed depth."""
+
     def __init__(self, depth: int = 3):
         self.depth = depth
         self.name = f"minimax{depth}"
@@ -55,8 +63,9 @@ class MinimaxBot:
         victim = board.piece_at(move.to)
         if victim is None:
             return 0
-        attacker = board.piece_at(move.frm)[1]
-        return -(PIECE_VALUES[victim[1]] * 10 - PIECE_VALUES[attacker])
+        attacker = board.piece_at(move.frm)
+        assert attacker is not None
+        return -(PIECE_VALUES[victim[1]] * 10 - PIECE_VALUES[attacker[1]])
 
     def _ordered(self, board: Board, moves: list[Move]) -> list[Move]:
         random.shuffle(moves)
@@ -79,6 +88,7 @@ class MinimaxBot:
         return alpha
 
     def get_move(self, board: Board) -> Move | None:
+        """Pick a move, or None if there is none."""
         self.nodes = 0
         moves = board.legal_moves()
         if not moves:
@@ -91,7 +101,7 @@ class MinimaxBot:
         return best
 
 
-def make_bot(name: str):
+def make_bot(name: str) -> RandomBot | GreedyBot | MinimaxBot | None:
     """Bot for a menu name; None for a human player."""
     if name == "human":
         return None

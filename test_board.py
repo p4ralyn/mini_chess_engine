@@ -1,5 +1,14 @@
-from board import (BLACK, WHITE, QUEEN, Board, Move, move_to_str, parse_move,
-                   square_index, square_name)
+from board import (
+    BLACK,
+    QUEEN,
+    WHITE,
+    Board,
+    Move,
+    move_to_str,
+    parse_move,
+    square_index,
+    square_name,
+)
 
 START_ROWS = ["rqkr", "pppp", "....", "PPPP", "RQKR"]
 MID_ROWS_1 = ["r.kr", "pq.p", "..P.", "PP.P", "RQKR"]
@@ -184,7 +193,7 @@ def test_repetition_and_fifty():
         for text in ("d1-d2", "a5-b5", "d2-d1", "b5-a5"):
             b = b.make_move(parse_move(b, text))
     assert b.game_over_reason() == "repetition"
-    assert Board(halfmove_clock=50).game_over_reason() == "50-move rule"
+    assert Board(halfmove_clock=50).game_over_reason() == "50-ply rule"
 
 
 def test_parse_move_rejects_illegal():

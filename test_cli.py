@@ -14,3 +14,9 @@ def test_human_bad_input_reprompts():
 def test_bot_game_has_result():
     result = play_game(make_bot("greedy"), make_bot("random"), verbose=False)
     assert result in {"1-0", "0-1", "1/2-1/2"}
+
+
+def test_eof_at_prompt_quits():
+    def read(_):
+        raise EOFError
+    assert play_game(None, make_bot("random"), verbose=False, read=read) == "*"

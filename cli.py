@@ -6,7 +6,7 @@
 import argparse
 import time
 
-from board import Board, move_to_str, parse_move
+from board import WHITE, Board, move_to_str, parse_move
 from bots import BOT_NAMES, make_bot
 
 
@@ -20,7 +20,11 @@ def play_game(white, black, delay: float = 0.0, verbose: bool = True, read=input
         if player is None:
             move = None
             while move is None:
-                text = read("your move: ").strip()
+                side = "white" if board.turn == WHITE else "black"
+                try:
+                    text = read(f"{side} move (or quit): ").strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    return "*"
                 if text == "quit":
                     return "*"
                 move = parse_move(board, text)
@@ -30,12 +34,12 @@ def play_game(white, black, delay: float = 0.0, verbose: bool = True, read=input
             move = player.get_move(board)
             time.sleep(delay)
         if verbose:
-            print(f"{'white' if board.turn == 0 else 'black'}: {move_to_str(board, move)}")
+            print(f"{'white' if board.turn == WHITE else 'black'}: {move_to_str(board, move)}")
         board = board.make_move(move)
     if verbose:
         print(board, "\n")
         print(f"{board.game_over_reason()}: {board.result()}")
-    return board.result()
+    return board.result() or "*"
 
 
 def run_arena(name_a: str, name_b: str, games: int) -> dict[str, int]:
@@ -56,6 +60,7 @@ def run_arena(name_a: str, name_b: str, games: int) -> dict[str, int]:
 
 
 def _parse_args() -> argparse.Namespace:
+    """Read and check command line options."""
     parser = argparse.ArgumentParser(description="4x5 Silverman minichess")
     choices = ["human"] + BOT_NAMES
     parser.add_argument("--white", default="human", choices=choices)
@@ -63,12 +68,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--games", type=int, default=1)
     parser.add_argument("--delay", type=float, default=0.0)
     args = parser.parse_args()
+    if args.games < 1:
+        parser.error("--games must be at least 1")
     if args.games > 1 and "human" in (args.white, args.black):
         parser.error("--games > 1 needs two bots")
     return args
 
 
 def main() -> None:
+    """Run one game or an arena."""
     args = _parse_args()
     if args.games > 1:
         tally = run_arena(args.white, args.black, args.games)

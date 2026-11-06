@@ -33,3 +33,11 @@ def test_make_bot():
     assert make_bot("human") is None
     with pytest.raises(ValueError):
         make_bot("bogus")
+
+
+def test_minimax_prefers_fastest_mate():
+    # same position as the mate-in-1 test: slower mates exist, the fast one must win
+    b = Board.from_rows(["k...", "....", "K...", "..R.", ".R.."])
+    mate = Move(square_index("c2"), square_index("c5"))
+    for _ in range(5):
+        assert MinimaxBot(4).get_move(b) == mate
