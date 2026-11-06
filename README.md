@@ -96,7 +96,3 @@ test_cli.py    cli and arena tests
 ```
 pytest
 ```
-
-## Credits
-
-Ideas taken from two seniors' repos: [trishaladabala/ChessBots](https://github.com/trishaladabala/ChessBots) (minichess variant, bot lineup, pygame interface) and [ApaarRaina/Chess_Engine](https://github.com/ApaarRaina/Chess_Engine) (bitboard encoding).
